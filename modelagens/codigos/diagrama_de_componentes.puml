@@ -1,0 +1,161 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 40
+skinparam pad 20
+
+' ==========================================
+' ESTILIZAÇÃO VISUAL APRIMORADA
+' ==========================================
+skinparam package {
+    BackgroundColor #F8F9FA
+    BorderColor #6C757D
+    FontStyle bold
+}
+skinparam component {
+    BackgroundColor #FFFFFF
+    BorderColor #343A40
+}
+skinparam database {
+    BackgroundColor #E3F2FD
+    BorderColor #0D47A1
+}
+skinparam queue {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+skinparam file {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+}
+
+title SGO - Sistema de Gestão das Olimpíadas\n(Arquitetura de Microsserviços Limpa e Alinhada)
+
+' ==========================================
+' ENTRADA DO SISTEMA
+' ==========================================
+component "Interface de Usuário\n(Web / Mobile)" as UI
+component "API Gateway\n(Roteamento e Autenticação)" as Gateway
+
+UI --> Gateway
+
+' ==========================================
+' MICROSSERVIÇOS (ORGANIZADOS EM PILARES VERTICAIS)
+' ==========================================
+' A ordem dos pacotes foi pensada para evitar o cruzamento das linhas de comunicação entre eles.
+package "Backend - Microsserviços Isolados" {
+
+    ' --- PILAR 1: ALOCAÇÃO ---
+    package "MS de Alocação" {
+        file "Aloc_DTO" as AlocDTO
+        component "Aloc_Controller" as AlocC
+        component "Aloc_Service" as AlocS
+        file "Aloc_Model" as AlocModel
+        component "Aloc_Repository" as AlocR
+        component "Aloc_DAO" as AlocDAO
+        database "DB_Alocação\n(MySQL)" as DBAloc
+        
+        AlocC -right-> AlocDTO : "Manipula"
+        AlocC --> AlocS
+        AlocS -right-> AlocModel : "Regras"
+        AlocS --> AlocR
+        AlocR --> AlocDAO
+        AlocDAO --> DBAloc
+    }
+
+    ' --- PILAR 2: COMPETIÇÕES ---
+    package "MS de Competições" {
+        file "Comp_DTO" as CompDTO
+        component "Comp_Controller" as CompC
+        component "Comp_Service" as CompS
+        file "Comp_Model" as CompModel
+        component "Comp_Repository" as CompR
+        component "Comp_DAO" as CompDAO
+        database "DB_Competições\n(MySQL)" as DBComp
+        
+        CompC -right-> CompDTO : "Manipula"
+        CompC --> CompS
+        CompS -right-> CompModel : "Regras"
+        CompS --> CompR
+        CompR --> CompDAO
+        CompDAO --> DBComp
+    }
+
+    ' --- PILAR 3: INSCRIÇÕES ---
+    package "MS de Inscrições" {
+        file "Insc_DTO" as InscDTO
+        component "Insc_Controller" as InscC
+        component "Insc_Service" as InscS
+        file "Insc_Model" as InscModel
+        queue "Broker\n(RabbitMQ)" as Broker
+        component "Insc_Worker" as InscW
+        component "Insc_Repository" as InscR
+        component "Insc_DAO" as InscDAO
+        database "DB_Inscrições\n(PostgreSQL)" as DBInsc
+        
+        InscC -right-> InscDTO : "Manipula"
+        InscC --> InscS
+        InscS -right-> InscModel : "Regras"
+        InscS --> Broker : "Publica Evento"
+        Broker --> InscW : "Consome"
+        InscW --> InscR
+        InscR --> InscDAO
+        InscDAO --> DBInsc
+    }
+
+    ' --- PILAR 4: RESULTADOS ---
+    package "MS de Resultados" {
+        file "Res_DTO" as ResDTO
+        component "Res_Controller" as ResC
+        component "Res_Service" as ResS
+        file "Res_Model" as ResModel
+        component "Res_Repository" as ResR
+        component "Res_DAO" as ResDAO
+        database "DB_Resultados\n(PostgreSQL)" as DBRes
+        
+        ResC -left-> ResDTO : "Manipula"
+        ResC --> ResS
+        ResS -left-> ResModel : "Regras"
+        ResS --> ResR
+        ResR --> ResDAO
+        ResDAO --> DBRes
+    }
+
+    ' --- PILAR 5: RELATÓRIOS ---
+    package "MS de Relatórios" {
+        file "Rel_DTO" as RelDTO
+        component "Rel_Controller" as RelC
+        component "Rel_Service" as RelS
+        file "Rel_Model" as RelModel
+        component "Rel_Repository" as RelR
+        component "Rel_DAO" as RelDAO
+        database "DB_Relatórios\n(MongoDB)" as DBRel
+        
+        RelC -left-> RelDTO : "Manipula"
+        RelC --> RelS
+        RelS -left-> RelModel : "Regras"
+        RelS --> RelR
+        RelR --> RelDAO
+        RelDAO --> DBRel
+    }
+}
+
+' ==========================================
+' ROTEAMENTO DO GATEWAY
+' ==========================================
+' O uso de "-->" longo ajuda o PlantUML a dar espaço superior
+Gateway ---> AlocC : "/alocacoes"
+Gateway ---> CompC : "/competicoes"
+Gateway ---> InscC : "/inscricoes"
+Gateway ---> ResC : "/resultados"
+Gateway ---> RelC : "/relatorios"
+
+' ==========================================
+' COMUNICAÇÃO INTER-SERVIÇOS (Chamadas horizontais limpas)
+' ==========================================
+AlocS .right.> CompC : "Consulta Competição"
+ResS .left.> InscC : "Valida Atleta"
+RelS .left.> ResC : "Agrega Medalhas"
+
+@enduml

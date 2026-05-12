@@ -1,0 +1,96 @@
+@startuml
+left to right direction
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+skinparam usecase {
+    BackgroundColor #FDFDFD
+    BorderColor #444
+    ArrowColor #444
+}
+
+title Sistema de Gestão das Olimpíadas (SGO)
+
+' =========================
+' ATORES
+' =========================
+
+actor Administrador as Admin
+actor Organizador as Org
+actor Atleta as Atl
+actor "Sistema" as Sys <<Automático>>
+
+' =========================
+' SISTEMA
+' =========================
+
+rectangle "SGO - Sistema de Gestão das Olimpíadas" {
+
+    ' -------------------------
+    ' COMPETIÇÕES (Regra 1)
+    ' -------------------------
+    package "Gerenciamento de Competições" {
+        usecase "Cadastrar Competição" as UC1
+        note bottom of UC1 : Inclui modalidade, data,\nhorário e local.
+    }
+
+    ' -------------------------
+    ' INSCRIÇÕES (Regra 2)
+    ' -------------------------
+    package "Inscrição de Atletas" {
+        usecase "Inscrever em Competição" as UC2
+        usecase "Validar Representação de País\n(1 por modalidade)" as UC3
+        
+        UC2 .> UC3 : <<include>>
+    }
+
+    ' -------------------------
+    ' ALOCAÇÃO (Regra 3)
+    ' -------------------------
+    package "Alocação de Locais" {
+        usecase "Alocar Local" as UC4
+        usecase "Verificar Conflito de\nHorário e Local" as UC5
+        
+        UC4 .> UC5 : <<include>>
+    }
+
+    ' -------------------------
+    ' RESULTADOS (Regra 4)
+    ' -------------------------
+    package "Controle de Resultados" {
+        usecase "Registrar Resultados\nda Competição" as UC6
+        usecase "Definir Pódio\n(1º, 2º e 3º lugares)" as UC7
+        
+        UC6 .> UC7 : <<include>>
+    }
+
+    ' -------------------------
+    ' RELATÓRIOS (Regra 5)
+    ' -------------------------
+    package "Relatórios" {
+        usecase "Gerar Relatório de\nQuadro de Medalhas" as UC8
+    }
+}
+
+' =========================
+' RELAÇÃO DOS ATORES
+' =========================
+
+' O Organizador cuida do andamento prático dos eventos
+Org --> UC1
+Org --> UC4
+Org --> UC6
+
+' O Atleta apenas interage com a sua inscrição
+Atl --> UC2
+
+' O Admin supervisiona o sistema e extrai dados gerenciais
+Admin --> UC8
+Admin --> UC1
+
+' O Sistema atua como ator secundário nas validações automáticas
+UC3 <-- Sys
+UC5 <-- Sys
+@enduml
