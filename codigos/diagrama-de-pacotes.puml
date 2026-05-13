@@ -1,0 +1,95 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 100
+
+package "Domínio de Delegações" {
+    class Pais {
+        - siglaCOI: String
+        - nomeOficial: String
+        - continente: String
+        + getTotalOuro(): Integer
+        + getTotalPrata(): Integer
+        + getTotalBronze(): Integer
+    }
+
+    class Atleta {
+        - numeroPassaporte: String
+        - nomeCompleto: String
+        - genero: String
+        - dataNascimento: LocalDate
+        + verificarElegibilidade(): Boolean
+    }
+}
+
+package "Processamento de Inscrições" {
+    class Participacao {
+        - numeroInscricao: String
+        - dataRegistro: LocalDateTime
+        - aprovadoCOI: Boolean
+        + confirmarParticipacao(): void
+        + validarUnicidadePaisModalidade(): Boolean
+    }
+}
+
+package "Gestão de Eventos e Infraestrutura" {
+    class Modalidade {
+        - id: Integer
+        - nomeDesporto: String
+        - categoria: String
+        - exigeEquipamento: Boolean
+        + validarRegras(): Boolean
+    }
+
+    class Local {
+        - idLocal: Integer
+        - nomeArena: String
+        - capacidadeMaxima: Integer
+        - tipoPiso: String
+        + checarDisponibilidade(inicio: LocalDateTime, fim: LocalDateTime): Boolean
+        + reservarTurno(competicao: Competicao): void
+    }
+
+    class Competicao {
+        - codigoEvento: String
+        - fase: String
+        - inicioAgendado: LocalDateTime
+        - fimAgendado: LocalDateTime
+        - statusAtual: String
+        + iniciarProva(): void
+        + finalizarProva(): void
+        + emitirSumario(): String
+    }
+}
+
+package "Apuragem e Relatórios" {
+    class Resultado {
+        - idRegistro: String
+        - dataCerimonia: LocalDateTime
+        - validadoAntidoping: Boolean
+        - quebraDeRecorde: Boolean
+        + homologarResultados(): void
+        + atualizarQuadroGeral(): void
+    }
+
+    class RelatorioMedalhas {
+        - dataEmissao: LocalDateTime
+        - responsavelEmissao: String
+        + compilarQuadro(paises: List<Pais>): String
+        + publicarResultadosOficiais(): void
+    }
+}
+
+Pais "1" <-down- "1..*" Atleta
+Atleta "1" -right- "0..*" Participacao
+Participacao "*" -right- "1" Competicao
+Competicao "*" -down-> "1" Modalidade
+Competicao "*" -up-> "1" Local
+Competicao "1" *-down- "0..1" Resultado
+Resultado -left-> "1" Atleta : medalhistaOuro
+Resultado -left-> "1" Atleta : medalhistaPrata
+Resultado -left-> "1" Atleta : medalhistaBronze
+RelatorioMedalhas .up.> Pais : compila dados de
+
+@enduml

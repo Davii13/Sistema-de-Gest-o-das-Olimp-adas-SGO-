@@ -29,6 +29,10 @@ skinparam file {
     BackgroundColor #E8F5E9
     BorderColor #2E7D32
 }
+skinparam interface {
+    BackgroundColor #FFE082
+    BorderColor #FF8F00
+}
 
 title SGO - Sistema de Gestão das Olimpíadas\n(Arquitetura de Microsserviços Limpa e Alinhada)
 
@@ -43,47 +47,55 @@ UI --> Gateway
 ' ==========================================
 ' MICROSSERVIÇOS (ORGANIZADOS EM PILARES VERTICAIS)
 ' ==========================================
-' A ordem dos pacotes foi pensada para evitar o cruzamento das linhas de comunicação entre eles.
 package "Backend - Microsserviços Isolados" {
 
     ' --- PILAR 1: ALOCAÇÃO ---
     package "MS de Alocação" {
+        interface "API REST" as API_Aloc
         file "Aloc_DTO" as AlocDTO
         component "Aloc_Controller" as AlocC
         component "Aloc_Service" as AlocS
         file "Aloc_Model" as AlocModel
         component "Aloc_Repository" as AlocR
         component "Aloc_DAO" as AlocDAO
+        interface "TCP/IP" as TCP_Aloc
         database "DB_Alocação\n(MySQL)" as DBAloc
         
+        API_Aloc -down- AlocC : "Fornece"
         AlocC -right-> AlocDTO : "Manipula"
         AlocC --> AlocS
         AlocS -right-> AlocModel : "Regras"
         AlocS --> AlocR
         AlocR --> AlocDAO
-        AlocDAO --> DBAloc
+        AlocDAO --> TCP_Aloc
+        TCP_Aloc -down- DBAloc
     }
 
     ' --- PILAR 2: COMPETIÇÕES ---
     package "MS de Competições" {
+        interface "API REST" as API_Comp
         file "Comp_DTO" as CompDTO
         component "Comp_Controller" as CompC
         component "Comp_Service" as CompS
         file "Comp_Model" as CompModel
         component "Comp_Repository" as CompR
         component "Comp_DAO" as CompDAO
+        interface "TCP/IP" as TCP_Comp
         database "DB_Competições\n(MySQL)" as DBComp
         
+        API_Comp -down- CompC : "Fornece"
         CompC -right-> CompDTO : "Manipula"
         CompC --> CompS
         CompS -right-> CompModel : "Regras"
         CompS --> CompR
         CompR --> CompDAO
-        CompDAO --> DBComp
+        CompDAO --> TCP_Comp
+        TCP_Comp -down- DBComp
     }
 
     ' --- PILAR 3: INSCRIÇÕES ---
     package "MS de Inscrições" {
+        interface "API REST" as API_Insc
         file "Insc_DTO" as InscDTO
         component "Insc_Controller" as InscC
         component "Insc_Service" as InscS
@@ -92,8 +104,10 @@ package "Backend - Microsserviços Isolados" {
         component "Insc_Worker" as InscW
         component "Insc_Repository" as InscR
         component "Insc_DAO" as InscDAO
+        interface "TCP/IP" as TCP_Insc
         database "DB_Inscrições\n(PostgreSQL)" as DBInsc
         
+        API_Insc -down- InscC : "Fornece"
         InscC -right-> InscDTO : "Manipula"
         InscC --> InscS
         InscS -right-> InscModel : "Regras"
@@ -101,61 +115,69 @@ package "Backend - Microsserviços Isolados" {
         Broker --> InscW : "Consome"
         InscW --> InscR
         InscR --> InscDAO
-        InscDAO --> DBInsc
+        InscDAO --> TCP_Insc
+        TCP_Insc -down- DBInsc
     }
 
     ' --- PILAR 4: RESULTADOS ---
     package "MS de Resultados" {
+        interface "API REST" as API_Res
         file "Res_DTO" as ResDTO
         component "Res_Controller" as ResC
         component "Res_Service" as ResS
         file "Res_Model" as ResModel
         component "Res_Repository" as ResR
         component "Res_DAO" as ResDAO
+        interface "TCP/IP" as TCP_Res
         database "DB_Resultados\n(PostgreSQL)" as DBRes
         
+        API_Res -down- ResC : "Fornece"
         ResC -left-> ResDTO : "Manipula"
         ResC --> ResS
         ResS -left-> ResModel : "Regras"
         ResS --> ResR
         ResR --> ResDAO
-        ResDAO --> DBRes
+        ResDAO --> TCP_Res
+        TCP_Res -down- DBRes
     }
 
     ' --- PILAR 5: RELATÓRIOS ---
     package "MS de Relatórios" {
+        interface "API REST" as API_Rel
         file "Rel_DTO" as RelDTO
         component "Rel_Controller" as RelC
         component "Rel_Service" as RelS
         file "Rel_Model" as RelModel
         component "Rel_Repository" as RelR
         component "Rel_DAO" as RelDAO
+        interface "TCP/IP" as TCP_Rel
         database "DB_Relatórios\n(MongoDB)" as DBRel
         
+        API_Rel -down- RelC : "Fornece"
         RelC -left-> RelDTO : "Manipula"
         RelC --> RelS
         RelS -left-> RelModel : "Regras"
         RelS --> RelR
         RelR --> RelDAO
-        RelDAO --> DBRel
+        RelDAO --> TCP_Rel
+        TCP_Rel -down- DBRel
     }
 }
 
 ' ==========================================
-' ROTEAMENTO DO GATEWAY
+' ROTEAMENTO DO GATEWAY (Consumindo as APIs)
 ' ==========================================
-' O uso de "-->" longo ajuda o PlantUML a dar espaço superior
-Gateway ---> AlocC : "/alocacoes"
-Gateway ---> CompC : "/competicoes"
-Gateway ---> InscC : "/inscricoes"
-Gateway ---> ResC : "/resultados"
-Gateway ---> RelC : "/relatorios"
+Gateway ---> API_Aloc : "/alocacoes"
+Gateway ---> API_Comp : "/competicoes"
+Gateway ---> API_Insc : "/inscricoes"
+Gateway ---> API_Res : "/resultados"
+Gateway ---> API_Rel : "/relatorios"
 
 ' ==========================================
-' COMUNICAÇÃO INTER-SERVIÇOS (Chamadas horizontais limpas)
+' COMUNICAÇÃO INTER-SERVIÇOS (Chamadas horizontais via API)
 ' ==========================================
-AlocS .right.> CompC : "Consulta Competição"
-ResS .left.> InscC : "Valida Atleta"
-RelS .left.> ResC : "Agrega Medalhas"
+AlocS .right.> API_Comp : "Consulta Competição"
+ResS .left.> API_Insc : "Valida Atleta"
+RelS .left.> API_Res : "Agrega Medalhas"
 
 @enduml
