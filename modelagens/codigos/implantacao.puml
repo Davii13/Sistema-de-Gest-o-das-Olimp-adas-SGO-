@@ -31,13 +31,25 @@ node "Serviço Externo" <<cloud>> {
     component "PlantUML API" as p_api
 }
 
-' Conexões ajustadas com direções explícitas para evitar sobreposição
+interface "HTTPS (443)" as i_https
+interface "HTTP (8080)" as i_http
+interface "JDBC (3306)" as i_jdbc
+interface "REST/JSON" as i_rest
+
 cliente -down-> internet
 smartphone -down-> internet
-internet -down-> lb : " HTTPS (443)"
-lb -down-> api : " HTTP (8080)"
-api -down-> db : " JDBC (3306)"
-api -right-> p_api : " REST/JSON"
+
+internet -down-( i_https
+i_https -down- lb
+
+lb -down-( i_http
+i_http -down- api
+
+api -down-( i_jdbc
+i_jdbc -down- db
+
+api -right-( i_rest
+i_rest -right- p_api
 
 note right of lb
   Distribui o tráfego e
